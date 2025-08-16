@@ -1,0 +1,53 @@
+# src/main/resources/application.yml
+spring:
+  application:
+    name: bdpay-dashboard-api
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bdpay
+    username: mezza # Your PostgreSQL username
+    password: # Add your PostgreSQL password here
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update # Creates/updates tables automatically
+    show-sql: true # Shows SQL queries in console
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # Security Configuration (temporarily disabled for initial setup)
+  security:
+    basic:
+      enabled: false
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# CORS Configuration for Nuxt frontend
+cors:
+  allowed-origins:
+    - http://localhost:3000 # Your Nuxt frontend URL
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowed-headers:
+    - "*"
+  allow-credentials: true
+
+# Logging Configuration
+logging:
+  level:
+    com.bdpay.dashboard: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate: INFO
