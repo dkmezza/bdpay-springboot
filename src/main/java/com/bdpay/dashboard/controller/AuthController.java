@@ -11,14 +11,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bdpay.dashboard.entity.User;
+import com.bdpay.dashboard.security.JwtTokenUtil;
 import com.bdpay.dashboard.service.AccountService;
 import com.bdpay.dashboard.service.TransactionService;
 import com.bdpay.dashboard.service.UserService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 @RestController
@@ -34,18 +35,19 @@ public class AuthController {
     
     @Autowired
     private TransactionService transactionService;
+    
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
 
     // Register new user
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            // Check if email already exists
             if (userService.emailExists(request.getEmail())) {
                 return ResponseEntity.badRequest()
                     .body(Map.of("error", "Email already exists"));
             }
 
-            // Create user
             User user = userService.registerUser(
                 request.getFirstName(),
                 request.getLastName(), 
@@ -53,18 +55,21 @@ public class AuthController {
                 request.getPassword()
             );
 
-            // Initialize default accounts and sample data
             accountService.initializeDefaultAccounts(user.getId());
             transactionService.initializeSampleTransactions(user.getId());
 
+            // Generate JWT token
+            String token = jwtTokenUtil.generateToken(user.getEmail(), user.getId());
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "User registered successfully");
-            response.put("userId", user.getId());
+            response.put("token", token);
             response.put("user", Map.of(
                 "id", user.getId(),
                 "firstName", user.getFirstName(),
                 "lastName", user.getLastName(),
-                "email", user.getEmail()
+                "email", user.getEmail(),
+                "fullName", user.getFullName()
             ));
 
             return ResponseEntity.ok(response);
@@ -79,13 +84,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
-            // Validate credentials
             if (userService.validateCredentials(request.getEmail(), request.getPassword())) {
                 User user = userService.getUserByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+                // Generate JWT token
+                String token = jwtTokenUtil.generateToken(user.getEmail(), user.getId());
+
                 Map<String, Object> response = new HashMap<>();
                 response.put("message", "Login successful");
+                response.put("token", token);
                 response.put("user", Map.of(
                     "id", user.getId(),
                     "firstName", user.getFirstName(),
@@ -106,10 +114,16 @@ public class AuthController {
         }
     }
 
-    // Get current user info
+    // Get current user info (requires authentication)
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@RequestParam Long userId) {
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
         try {
+            Long userId = (Long) request.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+            }
+
             User user = userService.getUserById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -130,7 +144,13 @@ public class AuthController {
         }
     }
 
-    // DTO classes for request bodies
+    // Logout (client-side token removal)
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+    }
+
+    // DTO classes
     public static class RegisterRequest {
         private String firstName;
         private String lastName;
@@ -163,4 +183,3 @@ public class AuthController {
         public void setPassword(String password) { this.password = password; }
     }
 }
-
