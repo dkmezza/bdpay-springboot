@@ -1,4 +1,3 @@
-// src/main/java/com/bdpay/dashboard/security/JwtTokenUtil.java
 package com.bdpay.dashboard.security;
 
 import java.security.Key;
@@ -18,13 +17,9 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtTokenUtil {
 
-    // Use a secure secret key (in production, use environment variable)
-    private final String secret = "mySecretKey1234567890abcdefghijklmnopqrstuvwxyz";
+    // Generating a secure key for HS512
+    private final Key signingKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
     private final int jwtExpiration = 86400; // 24 hours in seconds
-
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
-    }
 
     // Generate token for user
     public String generateToken(String username, Long userId) {
@@ -40,7 +35,7 @@ public class JwtTokenUtil {
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration * 1000))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .signWith(signingKey, SignatureAlgorithm.HS512)
                 .compact();
     }
 
@@ -69,7 +64,7 @@ public class JwtTokenUtil {
     // Get all claims from token
     private Claims getAllClaimsFromToken(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(signingKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
@@ -91,7 +86,7 @@ public class JwtTokenUtil {
     public Boolean isTokenValid(String token) {
         try {
             Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(signingKey)
                 .build()
                 .parseClaimsJws(token);
             return !isTokenExpired(token);
