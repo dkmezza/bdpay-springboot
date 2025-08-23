@@ -114,6 +114,28 @@ public class TransactionService {
     public List<Object[]> getSpendingByCategory(Long userId, LocalDateTime startDate, LocalDateTime endDate) {
         return transactionRepository.getSpendingByCategory(userId, startDate, endDate);
     }
+
+    // Get current quarter spending
+    public List<Object[]> getCurrentQuarterSpendingByCategory(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        int currentQuarter = ((now.getMonthValue() - 1) / 3) + 1;
+        int quarterStartMonth = (currentQuarter - 1) * 3 + 1;
+        
+        LocalDateTime startOfQuarter = now.withMonth(quarterStartMonth).withDayOfMonth(1)
+                                        .withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime endOfQuarter = now;
+        
+        return getSpendingByCategory(userId, startOfQuarter, endOfQuarter);
+    }
+
+    // Get current year spending
+    public List<Object[]> getCurrentYearSpendingByCategory(Long userId) {
+        LocalDateTime startOfYear = LocalDateTime.now().withDayOfYear(1)
+                                                .withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime endOfYear = LocalDateTime.now();
+        
+        return getSpendingByCategory(userId, startOfYear, endOfYear);
+    }
     
     // Get current month spending by category
     public List<Object[]> getCurrentMonthSpendingByCategory(Long userId) {
