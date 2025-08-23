@@ -1,6 +1,7 @@
 package com.bdpay.dashboard.controller;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,9 +100,43 @@ public class TransactionController {
 
     // Get spending statistics for statistics panel
     @GetMapping("/statistics/user/{userId}")
-    public ResponseEntity<?> getStatistics(@PathVariable Long userId) {
+    public ResponseEntity<?> getStatistics(@PathVariable Long userId,
+                                        @RequestParam(defaultValue = "current") String period) {
         try {
-            List<Object[]> spendingData = transactionService.getCurrentMonthSpendingByCategory(userId);
+            List<Object[]> spendingData;
+            
+            // Calculate date range based on period
+            LocalDateTime startDate;
+            LocalDateTime endDate = LocalDateTime.now();
+            
+            switch (period.toLowerCase()) {
+                case "current":
+                    // Current month
+                    startDate = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+                    break;
+                case "last":
+                    // Last month
+                    LocalDateTime lastMonth = LocalDateTime.now().minusMonths(1);
+                    startDate = lastMonth.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+                    endDate = lastMonth.withDayOfMonth(lastMonth.toLocalDate().lengthOfMonth())
+                                    .withHour(23).withMinute(59).withSecond(59);
+                    break;
+                case "quarter":
+                    // Current quarter
+                    int currentQuarter = ((LocalDateTime.now().getMonthValue() - 1) / 3) + 1;
+                    int quarterStartMonth = (currentQuarter - 1) * 3 + 1;
+                    startDate = LocalDateTime.now().withMonth(quarterStartMonth).withDayOfMonth(1)
+                                                .withHour(0).withMinute(0).withSecond(0);
+                    break;
+                case "year":
+                    // Current year
+                    startDate = LocalDateTime.now().withDayOfYear(1).withHour(0).withMinute(0).withSecond(0);
+                    break;
+                default:
+                    startDate = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            }
+            
+            spendingData = transactionService.getSpendingByCategory(userId, startDate, endDate);
             
             // Process data for frontend statistics
             List<Map<String, Object>> statisticsData = spendingData.stream()
@@ -117,7 +152,10 @@ public class TransactionController {
 
             return ResponseEntity.ok(Map.of(
                 "categories", statisticsData,
-                "total", total
+                "total", total,
+                "period", period,
+                "startDate", startDate,
+                "endDate", endDate
             ));
 
         } catch (Exception e) {
