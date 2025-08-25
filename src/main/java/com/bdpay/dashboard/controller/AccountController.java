@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,6 +63,59 @@ public class AccountController {
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+
+    // Update account
+    @PutMapping("/{accountId}")
+    public ResponseEntity<?> updateAccount(@PathVariable Long accountId,
+                                        @RequestBody UpdateAccountRequest request) {
+        try {
+            Account account = accountService.getAccountById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+            // Update account fields
+            if (request.getAccountName() != null) {
+                account.setAccountName(request.getAccountName());
+            }
+            if (request.getCurrentBalance() != null) {
+                account.setPreviousBalance(account.getCurrentBalance());
+                account.setCurrentBalance(request.getCurrentBalance());
+            }
+            
+            // Handle wallet-specific fields
+            if (account.getAccountType() == AccountType.WALLET) {
+                if (request.getSpendingLimit() != null) {
+                    account.setSpendingLimit(request.getSpendingLimit());
+                }
+                if (request.getTotalLimit() != null) {
+                    account.setTotalLimit(request.getTotalLimit());
+                }
+                if (request.getCardType() != null) {
+                    account.setCardType(request.getCardType());
+                }
+            }
+
+            Account updatedAccount = accountService.updateAccount(account);
+            return ResponseEntity.ok(mapAccountToResponse(updatedAccount));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Delete account
+    @DeleteMapping("/{accountId}")
+    public ResponseEntity<?> deleteAccount(@PathVariable Long accountId) {
+        try {
+            accountService.deleteAccount(accountId);
+            return ResponseEntity.ok(Map.of("message", "Account deleted successfully"));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", e.getMessage()));
         }
     }
@@ -190,6 +244,31 @@ public class AccountController {
         
         public BigDecimal getInitialBalance() { return initialBalance; }
         public void setInitialBalance(BigDecimal initialBalance) { this.initialBalance = initialBalance; }
+    }
+
+
+    public static class UpdateAccountRequest {
+        private String accountName;
+        private BigDecimal currentBalance;
+        private BigDecimal spendingLimit;
+        private BigDecimal totalLimit;
+        private String cardType;
+
+        // Getters and setters
+        public String getAccountName() { return accountName; }
+        public void setAccountName(String accountName) { this.accountName = accountName; }
+        
+        public BigDecimal getCurrentBalance() { return currentBalance; }
+        public void setCurrentBalance(BigDecimal currentBalance) { this.currentBalance = currentBalance; }
+        
+        public BigDecimal getSpendingLimit() { return spendingLimit; }
+        public void setSpendingLimit(BigDecimal spendingLimit) { this.spendingLimit = spendingLimit; }
+        
+        public BigDecimal getTotalLimit() { return totalLimit; }
+        public void setTotalLimit(BigDecimal totalLimit) { this.totalLimit = totalLimit; }
+        
+        public String getCardType() { return cardType; }
+        public void setCardType(String cardType) { this.cardType = cardType; }
     }
 
     public static class TransferRequest {
