@@ -85,6 +85,32 @@ public class AccountService {
         return accountRepository.save(account);
     }
     
+    // Update account
+    public Account updateAccount(Account account) {
+        return accountRepository.save(account);
+    }
+
+    // Delete account
+    public void deleteAccount(Long accountId) {
+        Account account = accountRepository.findById(accountId)
+            .orElseThrow(() -> new RuntimeException("Account not found with id: " + accountId));
+        
+        // Check if account has transactions
+        if (account.getTransactions() != null && !account.getTransactions().isEmpty()) {
+            throw new RuntimeException("Cannot delete account with existing transactions");
+        }
+        
+        accountRepository.delete(account);
+    }
+
+    // Check if account can be deleted
+    public boolean canDeleteAccount(Long accountId) {
+        Account account = accountRepository.findById(accountId)
+            .orElseThrow(() -> new RuntimeException("Account not found"));
+        
+        return account.getTransactions() == null || account.getTransactions().isEmpty();
+    }
+
     // Update account balance
     public Account updateBalance(Long accountId, BigDecimal newBalance) {
         Account account = accountRepository.findById(accountId)
